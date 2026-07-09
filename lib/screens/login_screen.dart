@@ -1,7 +1,14 @@
+// lib/screens/login_screen.dart
+
 import 'package:flutter/material.dart';
+import '../data/dummy_data.dart';
+import '../widgets/shared_widgets.dart';
+import '../services/ticket_service.dart';
 import 'register_screen.dart';
 import 'reset_password_screen.dart';
 import 'main_screen.dart';
+import 'admin_main_screen.dart';
+import 'helpdesk_main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,22 +34,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; _error = null; });
-    await Future.delayed(const Duration(seconds: 1)); // simulasi loading
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    await Future.delayed(const Duration(milliseconds: 800));
 
-    // Dummy auth: email apa saja + password minimal 6 char = berhasil
-    if (_passCtrl.text.length >= 6) {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
-    } else {
+    final email = _emailCtrl.text.trim().toLowerCase();
+    final pass = _passCtrl.text;
+
+    final success = await TicketService.login(email, pass);
+
+    if (!mounted) return;
+
+    if (!success) {
       setState(() {
         _isLoading = false;
         _error = 'Email atau password salah';
       });
+      return;
     }
+
+    final user = currentUser;
+
+    Widget screen;
+    if (user.role == 'admin') {
+      screen = const AdminMainScreen();
+    } else if (user.role == 'helpdesk') {
+      screen = const HelpdeskMainScreen();
+    } else {
+      screen = const MainScreen();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
   }
 
   @override
@@ -61,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Icon(
                     Icons.confirmation_number_rounded,
                     size: 64,
-                    color: Color(0xFF2563EB),
+                    color: kPrimary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -71,10 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 26, fontWeight: FontWeight.bold)),
                 ),
                 const Center(
-                  child: Text('Masuk ke akun E-Ticketing Anda',
+                  child: Text('E-Ticketing Helpdesk',
                       style: TextStyle(color: Colors.grey)),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                const SizedBox(height: 28),
                 TextFormField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
@@ -96,9 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                          _obscure ? Icons.visibility_off : Icons.visibility),
                       onPressed: () =>
                           setState(() => _obscure = !_obscure),
                     ),
@@ -173,4 +201,5 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
 }

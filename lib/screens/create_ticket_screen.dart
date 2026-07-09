@@ -1,6 +1,8 @@
+// lib/screens/create_ticket_screen.dart
+
 import 'package:flutter/material.dart';
 import '../data/dummy_data.dart';
-import '../models/ticket_model.dart';
+import '../services/ticket_service.dart';
 
 class CreateTicketScreen extends StatefulWidget {
   const CreateTicketScreen({super.key});
@@ -26,26 +28,21 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
 
-    // Tambah ke dummy data
-    final newTicket = TicketModel(
-      id: dummyTickets.length + 1,
+    // Buat tiket via TicketService
+    await TicketService.createTicket(
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
-      status: 'open',
       priority: _priority,
-      comments: [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      creator: currentUser,
     );
-    dummyTickets.insert(0, newTicket);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Tiket berhasil dibuat!'),
+        content: Text('✅ Tiket berhasil dibuat! Status: OPEN'),
         backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
     );
     Navigator.pop(context);
@@ -62,6 +59,29 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Info status
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Tiket baru akan otomatis berstatus OPEN.',
+                        style: TextStyle(color: Colors.blue, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               TextFormField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(
@@ -113,12 +133,12 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Upload simulasi (dummy)
+              // Upload simulasi
               const Text('Lampiran (Opsional)',
                   style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Container(
-                height: 120,
+                height: 100,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
@@ -128,12 +148,10 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.upload_file, size: 36, color: Colors.grey),
-                    SizedBox(height: 8),
+                    Icon(Icons.upload_file, size: 32, color: Colors.grey),
+                    SizedBox(height: 6),
                     Text('Tap untuk upload gambar',
-                        style: TextStyle(color: Colors.grey)),
-                    Text('(Dummy - tidak ada fungsi upload)',
-                        style: TextStyle(color: Colors.grey, fontSize: 11)),
+                        style: TextStyle(color: Colors.grey, fontSize: 13)),
                   ],
                 ),
               ),

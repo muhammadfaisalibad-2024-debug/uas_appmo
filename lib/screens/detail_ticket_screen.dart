@@ -1,6 +1,11 @@
+// lib/screens/detail_ticket_screen.dart
+
 import 'package:flutter/material.dart';
+import '../data/dummy_data.dart';
 import '../models/ticket_model.dart';
+import '../services/ticket_service.dart';
 import '../widgets/shared_widgets.dart';
+import 'tracking_screen.dart';
 
 class DetailTicketScreen extends StatefulWidget {
   final TicketModel ticket;
@@ -12,13 +17,6 @@ class DetailTicketScreen extends StatefulWidget {
 
 class _DetailTicketScreenState extends State<DetailTicketScreen> {
   final _commentCtrl = TextEditingController();
-  late List<CommentModel> _comments;
-
-  @override
-  void initState() {
-    super.initState();
-    _comments = List.from(widget.ticket.comments);
-  }
 
   @override
   void dispose() {
@@ -26,25 +24,39 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
     super.dispose();
   }
 
-  void _addComment() {
+  Future<void> _addComment() async {
     if (_commentCtrl.text.trim().isEmpty) return;
-    setState(() {
-      _comments.add(CommentModel(
-        id: _comments.length + 100,
-        body: _commentCtrl.text.trim(),
-        userName: 'Paisal Mahendra',
-        createdAt: DateTime.now(),
-      ));
-      _commentCtrl.clear();
-    });
+    await TicketService.addReply(
+      ticket: widget.ticket,
+      body: _commentCtrl.text.trim(),
+      actor: currentUser,
+    );
+    if (!mounted) return;
+    setState(() => _commentCtrl.clear());
   }
 
   @override
   Widget build(BuildContext context) {
     final ticket = widget.ticket;
+    final publicComments =
+        ticket.comments.where((c) => !c.isInternal).toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text('Tiket #${ticket.id}')),
+      appBar: AppBar(
+        title: Text('Tiket #${ticket.id}'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => TrackingScreen(ticket: ticket)),
+            ),
+            icon: const Icon(Icons.timeline, color: Colors.white, size: 18),
+            label: const Text('Tracking',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -66,16 +78,31 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Text(
-                    'Dibuat: ${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+
+                  // Info
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        _InfoRow(
+                            label: 'Dibuat',
+                            value: formatDateTime(ticket.createdAt)),
+                        const SizedBox(height: 6),
+                        _InfoRow(
+                          label: 'Ditangani oleh',
+                          value: ticket.assignedHelpdeskName ??
+                              'Menunggu penanganan',
+                          valueColor: ticket.assignedHelpdeskName == null
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                      ],
+                    ),
                   ),
-                  if (ticket.assignedTo != null) ...[
-                    const SizedBox(height: 4),
-                    Text('Ditangani oleh: ${ticket.assignedTo}',
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
-                  ],
 
                   const Divider(height: 24),
                   const Text('Deskripsi',
@@ -85,11 +112,11 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
                       style: const TextStyle(height: 1.5)),
 
                   const Divider(height: 32),
-                  Text('Komentar (${_comments.length})',
+                  Text('Komentar (${publicComments.length})',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
 
-                  if (_comments.isEmpty)
+                  if (publicComments.isEmpty)
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
@@ -98,7 +125,9 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
                       ),
                     )
                   else
-                    ..._comments.map((c) => _CommentItem(comment: c)),
+                    ...publicComments.map((c) => _CommentItem(comment: c)),
+
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -156,21 +185,48 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
   }
 }
 
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+  const _InfoRow({required this.label, required this.value, this.valueColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(value,
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: valueColor)),
+      ],
+    );
+  }
+}
+
 class _CommentItem extends StatelessWidget {
   final CommentModel comment;
   const _CommentItem({required this.comment});
 
   @override
   Widget build(BuildContext context) {
-    final isMe = comment.userName == 'Paisal Mahendra';
+    final isHelpdesk = comment.userRole == 'helpdesk';
+    final isAdmin = comment.userRole == 'admin';
+    final color = isHelpdesk
+        ? kPrimary
+        : (isAdmin ? Colors.teal : Colors.grey.shade600);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isMe
-            ? kPrimary.withOpacity(0.08)
-            : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+        color: color.withOpacity(0.07),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,20 +235,43 @@ class _CommentItem extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: isMe ? kPrimary : Colors.grey,
+                backgroundColor: color,
                 child: Text(
                   comment.userName[0].toUpperCase(),
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(comment.userName,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Text(
-                '${comment.createdAt.day}/${comment.createdAt.month}/${comment.createdAt.year}',
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(comment.userName,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      formatDateTime(comment.createdAt),
+                      style: const TextStyle(
+                          color: Colors.grey, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
+              if (isHelpdesk || isAdmin)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isHelpdesk ? 'Helpdesk' : 'Admin',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),

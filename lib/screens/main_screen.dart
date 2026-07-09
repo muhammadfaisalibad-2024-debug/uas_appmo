@@ -1,7 +1,10 @@
+// lib/screens/main_screen.dart
+
 import 'package:flutter/material.dart';
 import '../widgets/shared_widgets.dart';
 import 'dashboard_screen.dart';
 import 'list_ticket_screen.dart';
+import 'statistik_screen.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
 
@@ -18,6 +21,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     DashboardScreen(),
     ListTicketScreen(),
+    StatistikScreen(),
     NotificationScreen(),
     ProfileScreen(),
   ];

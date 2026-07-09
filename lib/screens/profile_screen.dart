@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/dummy_data.dart';
 import '../main.dart';
+import '../models/ticket_model.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
 
@@ -24,7 +25,7 @@ class ProfileScreen extends StatelessWidget {
                   radius: 48,
                   backgroundColor: kPrimary,
                   child: Text(
-                    dummyUser.name[0].toUpperCase(),
+                    currentUser.name.isNotEmpty ? currentUser.name[0].toUpperCase() : 'U',
                     style: const TextStyle(
                         fontSize: 36,
                         color: Colors.white,
@@ -32,11 +33,11 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(dummyUser.name,
+                Text(currentUser.name,
                     style: const TextStyle(
                         fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(dummyUser.email,
+                Text(currentUser.email,
                     style: const TextStyle(color: Colors.grey)),
                 const SizedBox(height: 8),
                 Container(
@@ -46,8 +47,8 @@ class ProfileScreen extends StatelessWidget {
                     color: kPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('User',
-                      style: TextStyle(
+                  child: Text(currentUser.role.toUpperCase(),
+                      style: const TextStyle(
                           color: kPrimary, fontWeight: FontWeight.w600)),
                 ),
               ],
@@ -72,41 +73,103 @@ class ProfileScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: const Text('Role'),
-            trailing: Text(dummyUser.role.toUpperCase(),
+            trailing: Text(currentUser.role.toUpperCase(),
                 style: const TextStyle(color: Colors.grey)),
           ),
           ListTile(
             leading: const Icon(Icons.email_outlined),
             title: const Text('Email'),
-            trailing: Text(dummyUser.email,
+            trailing: Text(currentUser.email,
                 style:
                     const TextStyle(color: Colors.grey, fontSize: 13)),
           ),
 
           const Divider(),
           _SectionLabel('Aktivitas'),
-          ListTile(
-            leading: const Icon(Icons.confirmation_number_outlined),
-            title: const Text('Total Tiket Dibuat'),
-            trailing: Text('${dummyTickets.length}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.check_circle_outline,
-                color: Colors.green),
-            title: const Text('Tiket Selesai'),
-            trailing: Text(
-              dummyTickets
-                  .where((t) => t.status == 'resolved' || t.status == 'closed')
-                  .length
-                  .toString(),
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.green),
+          if (currentUser.role == 'admin') ...[
+            ListTile(
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: const Text('Total Seluruh Tiket'),
+              trailing: Text('${dummyTickets.length}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ),
-          ),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline,
+                  color: Colors.green),
+              title: const Text('Total Tiket Selesai'),
+              trailing: Text(
+                dummyTickets
+                    .where((t) => t.status == TicketStatus.close)
+                    .length
+                    .toString(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.green),
+              ),
+            ),
+          ] else if (currentUser.role == 'helpdesk') ...[
+            ListTile(
+              leading: const Icon(Icons.assignment_outlined),
+              title: const Text('Tiket Ditugaskan'),
+              trailing: Text(
+                dummyTickets
+                    .where((t) => t.assignedHelpdeskId == currentUser.id)
+                    .length
+                    .toString(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline,
+                  color: Colors.green),
+              title: const Text('Tiket Diselesaikan'),
+              trailing: Text(
+                dummyTickets
+                    .where((t) =>
+                        t.assignedHelpdeskId == currentUser.id &&
+                        t.status == TicketStatus.close)
+                    .length
+                    .toString(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.green),
+              ),
+            ),
+          ] else ...[
+            ListTile(
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: const Text('Total Tiket Anda'),
+              trailing: Text(
+                dummyTickets
+                    .where((t) => t.createdById == currentUser.id)
+                    .length
+                    .toString(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline,
+                  color: Colors.green),
+              title: const Text('Tiket Selesai'),
+              trailing: Text(
+                dummyTickets
+                    .where((t) =>
+                        t.createdById == currentUser.id &&
+                        t.status == TicketStatus.close)
+                    .length
+                    .toString(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.green),
+              ),
+            ),
+          ],
 
           const Divider(),
           ListTile(

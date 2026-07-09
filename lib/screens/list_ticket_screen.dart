@@ -1,6 +1,8 @@
+// lib/screens/list_ticket_screen.dart
+
 import 'package:flutter/material.dart';
-import '../data/dummy_data.dart';
 import '../models/ticket_model.dart';
+import '../services/ticket_service.dart';
 import '../widgets/shared_widgets.dart';
 import 'create_ticket_screen.dart';
 import 'detail_ticket_screen.dart';
@@ -16,12 +18,14 @@ class _ListTicketScreenState extends State<ListTicketScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final _statuses = [null, 'open', 'in_progress', 'resolved', 'closed'];
-  final _labels = ['Semua', 'Open', 'In Progress', 'Resolved', 'Closed'];
-
-  List<TicketModel> _filtered(String? status) => status == null
-      ? dummyTickets
-      : dummyTickets.where((t) => t.status == status).toList();
+  final _statuses = [
+    null,
+    TicketStatus.open,
+    TicketStatus.assign,
+    TicketStatus.inProgress,
+    TicketStatus.close,
+  ];
+  final _labels = ['Semua', 'Open', 'Assign', 'In Progress', 'Close'];
 
   @override
   void initState() {
@@ -50,10 +54,13 @@ class _ListTicketScreenState extends State<ListTicketScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
-        ),
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
+          );
+          setState(() {});
+        },
         backgroundColor: kPrimary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
@@ -61,7 +68,7 @@ class _ListTicketScreenState extends State<ListTicketScreen>
       body: TabBarView(
         controller: _tabController,
         children: _statuses.map((status) {
-          final tickets = _filtered(status);
+          final tickets = TicketService.byStatus(status);
           if (tickets.isEmpty) {
             return const Center(
               child: Column(
@@ -78,7 +85,18 @@ class _ListTicketScreenState extends State<ListTicketScreen>
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: tickets.length,
-            itemBuilder: (_, i) => _TicketItem(ticket: tickets[i]),
+            itemBuilder: (_, i) => _TicketItem(
+              ticket: tickets[i],
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          DetailTicketScreen(ticket: tickets[i])),
+                );
+                setState(() {});
+              },
+            ),
           );
         }).toList(),
       ),
@@ -88,18 +106,15 @@ class _ListTicketScreenState extends State<ListTicketScreen>
 
 class _TicketItem extends StatelessWidget {
   final TicketModel ticket;
-  const _TicketItem({required this.ticket});
+  final VoidCallback onTap;
+  const _TicketItem({required this.ticket, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => DetailTicketScreen(ticket: ticket)),
-        ),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -133,10 +148,11 @@ class _TicketItem extends StatelessWidget {
                   const SizedBox(width: 10),
                   PriorityBadge(priority: ticket.priority),
                   const Spacer(),
-                  const Icon(Icons.access_time, size: 13, color: Colors.grey),
+                  const Icon(Icons.access_time,
+                      size: 13, color: Colors.grey),
                   const SizedBox(width: 4),
                   Text(
-                    '${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
+                    formatDate(ticket.createdAt),
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
